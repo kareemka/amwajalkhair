@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+
+<head>
+  <meta charset="UTF-8">
+  <meta viewport="width=device-width, initial-scale=1.0">
+  <title>وصل إلكتروني - {{orderNumber}}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Almarai:wght@300;400;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Almarai', sans-serif;
+      background: #f5f5f5;
+      padding: 0;
+      direction: rtl;
+      margin: 0;
+    }
+
+    .receipt {
+      width: 100mm;
+      height: 150mm;
+      margin: auto;
+      background: #fff;
+      padding: 4mm;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px dashed #000;
+      padding-bottom: 1mm;
+      margin-bottom: 1.5mm;
+    }
+
+    .logo {
+      height: 12mm;
+      width: auto;
+    }
+
+    .delivery-logo {
+      height: 18mm;
+      width: auto;
+    }
+
+    .title {
+      flex: 1;
+      text-align: center;
+      font-size: 12pt;
+      font-weight: normal;
+    }
+
+    .client-name {
+      text-align: center;
+      font-size: 10pt;
+      font-weight: normal;
+      padding: 1mm;
+      margin-bottom: 4mm;
+      background: #eee;
+      border-radius: 4px;
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 35mm;
+      gap: 3mm;
+      margin-bottom: 5mm;
+      flex: 1;
+    }
+
+    .customer-info {
+      padding: 1mm;
+    }
+
+    .info-row {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 2mm;
+      border-bottom: 0.5px solid #eee;
+      padding-bottom: 1mm;
+    }
+
+    /* New class for horizontal fields */
+    .info-row-inline {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2mm;
+      border-bottom: 0.5px solid #eee;
+      padding-bottom: 1mm;
+    }
+
+    .info-label {
+      font-weight: normal;
+      font-size: 10pt;
+      color: #333;
+      margin-bottom: 0.5mm;
+    }
+
+    .info-value {
+      font-weight: normal;
+      text-align: right;
+      font-size: 10.5pt;
+      color: #000;
+      flex: 1;
+    }
+
+    /* For inline rows, ensure labels don't wrap and have some margin */
+    .info-row-inline .info-label {
+      margin-bottom: 0;
+      margin-left: 10px;
+      white-space: nowrap;
+    }
+
+    .info-row-inline .info-value {
+      text-align: left;
+    }
+
+    .qr-section {
+      border: 2px solid #000;
+      padding: 2mm;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      height: fit-content;
+      background: #fafafa;
+    }
+
+    .gov-box {
+      font-size: 11pt;
+      font-weight: normal;
+      text-align: center;
+      width: 100%;
+      margin-bottom: 2mm;
+      border-bottom: 1px solid #000;
+      padding-bottom: 1mm;
+    }
+
+    .order-info {
+      text-align: center;
+      margin-bottom: 3mm;
+    }
+
+    .order-label {
+      font-size: 9pt;
+      font-weight: normal;
+      color: #555;
+    }
+
+    .order-id {
+      font-size: 11pt;
+      font-weight: normal;
+      margin-top: 0.5mm;
+    }
+
+    .qr-code {
+      margin: 2mm 0;
+    }
+
+    .total-box {
+      font-size: 12pt;
+      font-weight: normal;
+      text-align: center;
+      padding: 2mm 1mm;
+      width: 100%;
+      margin-top: 2mm;
+      background: #000;
+      color: #fff;
+      border-radius: 4px;
+    }
+
+    .notes-full {
+      width: 100%;
+      margin-top: 4mm;
+      padding-top: 2mm;
+      border-top: 1px dashed #000;
+    }
+
+    .box-title {
+      font-size: 10pt;
+      font-weight: normal;
+      margin-bottom: 1.5mm;
+      text-align: right;
+      text-decoration: underline;
+    }
+
+    .box-content {
+      font-size: 10pt;
+      font-weight: normal;
+      line-height: 1.5;
+      min-height: 20mm;
+    }
+
+    @media print {
+      body {
+        background: white;
+        margin: 0;
+      }
+
+      .receipt {
+        box-shadow: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="receipt">
+
+    <!-- Header -->
+    <div class="header">
+      <img src="http://localhost:3000/logo.png" class="logo">
+      <div class="title">وصل إلكتروني</div>
+      <!-- <img src="http://localhost:3000/almada.png" class="delivery-logo"> -->
+    </div>
+    <div class="client-name">
+      اسم العميل: {{clientHierarchyName}}
+    </div>
+
+
+    <div class="main-grid">
+
+      <!-- Customer Info -->
+      <div class="customer-info">
+        <div class="info-row-inline">
+          <span class="info-label">اسم الزبون:</span>
+          <span class="info-value">{{customerName}}</span>
+        </div>
+        <div class="info-row-inline">
+          <span class="info-label">رقم الهاتف:</span>
+          <span class="info-value">{{customerPhone}}</span>
+        </div>
+        <div class="info-row-inline">
+          <span class="info-label">القضاء:</span>
+          <span class="info-value">{{district}}</span>
+        </div>
+        <div class="info-row-inline">
+          <span class="info-label">المسوق:</span>
+          <span class="info-value">{{marketerName}}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">العنوان كامل:</span>
+          <span class="info-value">{{governorate}} - {{district}} - {{area}}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">المنتجات:</span>
+          <span class="info-value">
+            {{#each items}}{{this.name}}{{#unless @last}} ، {{/unless}}{{/each}}
+          </span>
+        </div>
+      </div>
+
+      <!-- QR Section -->
+      <div class="qr-section">
+        <div class="gov-box">{{governorate}}</div>
+
+        <div class="order-info">
+          <div class="order-label">رقم الطلب</div>
+          <div class="order-id">#{{orderNumber}}</div>
+        </div>
+
+        <div class="qr-code">
+          <img src="{{qrCodeDataURL}}" width="80" height="80">
+        </div>
+
+        <div class="total-box">{{totalAmount}} د.ع</div>
+      </div>
+
+    </div>
+
+    <!-- Notes (Full width) -->
+    <div class="notes-full">
+      <div class="box-title">ملاحظات العميل</div>
+      <div class="box-content">{{notes}}</div>
+    </div>
+
+  </div>
+
+</body>
+
+</html>
