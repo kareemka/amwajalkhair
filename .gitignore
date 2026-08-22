@@ -64,3 +64,6 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 /generated/prisma
 src/firebase/firebase-admin.json
 
+.history/
+.env
+.env.*
