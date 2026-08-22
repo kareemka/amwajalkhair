@@ -1,0 +1,22 @@
+user=khayal_alzili
+password=ADJJ#$kDDFDMFDJ23@08
+
+
+
+#SSL and ربط الموقع بالدومين 
+=================================================
+#nginx# ربط الموقع 
+api= nano /etc/nginx/sites-available/amwaj-api
+
+
+تفعيل الدومين:
+==================
+api= ln -s /etc/nginx/sites-available/amwaj-api /etc/nginx/sites-enabled/amwaj-api
+sudo systemctl reload nginx
+
+#SSL
+تفعيل SSL للدومين
+api= sudo certbot --nginx -d api.shadowsilhouette.com
+admin= sudo certbot --nginx -d admin.shadowsilhouette.com
+front= sudo certbot --nginx -d shadowsilhouette.com
+=================================================

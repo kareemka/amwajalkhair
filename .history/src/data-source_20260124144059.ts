@@ -24,8 +24,7 @@ import { ProductImage } from './product/entities/product-image.entity';
 
 
 // ------------------ تحميل متغيرات البيئة ------------------
-// dotenv.config();
-dotenv.config({ path: '.env.production' });
+dotenv.config();
 
 export const AppDataSource = new DataSource({
     type: 'postgres',

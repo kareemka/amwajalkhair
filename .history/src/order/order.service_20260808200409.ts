@@ -1475,7 +1475,7 @@ export class OrderService {
       : [];
 
     // أضف اسم الشركة بالبداية
-    const clientHierarchyName = ['أمواج الخير', ...employeeHierarchy].join('/');
+    const clientHierarchyName = ['هافانا', ...employeeHierarchy].join('/');
 
 
     // 2) Generate QR Code
@@ -1611,7 +1611,7 @@ export class OrderService {
         : [];
 
       // أضف اسم الشركة بالبداية
-      const clientHierarchyName = ['أمواج الخير', ...employeeHierarchy].join('/');
+      const clientHierarchyName = ['هافانا', ...employeeHierarchy].join('/');
 
 
       const qrCode = await QRCode.toDataURL(order.orderNumber.toString());

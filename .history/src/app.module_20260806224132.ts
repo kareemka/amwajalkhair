@@ -39,7 +39,6 @@ import { AiAssistantModule } from './ai-assistant/ai-assistant.module';
     }),
     ConfigModule.forRoot({
       isGlobal: true, // يجعل .env متاح في كل المشروع
-      envFilePath: '.env.production',
     }),
 
     TypeOrmModule.forRootAsync({
