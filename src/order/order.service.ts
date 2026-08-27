@@ -816,7 +816,7 @@ export class OrderService {
       );
 
       if (newStatus === OrderStatus.DELIVERING) {
-        // await this.jenniService.createShipment(order);
+        await this.jenniService.createShipment(order);
       }
 
       return {
@@ -925,7 +925,7 @@ export class OrderService {
         );
 
         if (newStatus === OrderStatus.DELIVERING) {
-          // await this.jenniService.createShipment(o);
+          await this.jenniService.createShipment(o);
         }
       }
 

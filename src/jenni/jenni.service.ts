@@ -59,7 +59,7 @@ export class JenniService {
             }
 
             return this.token;
-        } catch (error) {
+        } catch (error: any) {
             this.logger.error(`Error during Jenni login: ${error.message}`);
             throw error;
         }
@@ -93,7 +93,7 @@ export class JenniService {
             this.refreshToken = data.refreshToken || data.refresh_token;
 
             return this.token;
-        } catch (error) {
+        } catch (error: any) {
             this.logger.error(`Error during Jenni token refresh: ${error.message}`);
             return this.login();
         }
@@ -174,7 +174,7 @@ export class JenniService {
             const result = await response.json();
             this.logger.log(`Shipment created successfully for order #${order.id}: ${JSON.stringify(result)}`);
             return result;
-        } catch (error) {
+        } catch (error: any) {
             this.logger.error(`Error creating shipment on Jenni: ${error.message}`);
             return null;
         }
