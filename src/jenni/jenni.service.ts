@@ -7,17 +7,17 @@ import { OrderStatus } from '../utils/order-status.enum';
 export class JenniService {
     private readonly logger = new Logger(JenniService.name);
     private readonly apiUrl: string;
-    private readonly username: string;
-    private readonly password: string;
+    private readonly staticToken: string;
     private readonly systemCode: string;
-    private token: string | null = null;
-    private refreshToken: string | null = null;
 
     constructor(private configService: ConfigService) {
         this.apiUrl = this.configService.get<string>('JENNI_API_URL');
-        this.username = this.configService.get<string>('JENNI_USERNAME');
-        this.password = this.configService.get<string>('JENNI_PASSWORD');
+        this.staticToken = this.configService.get<string>('JENNI_STATIC_TOKEN');
         this.systemCode = this.configService.get<string>('JENNI_SYSTEM_CODE');
+
+        if (!this.staticToken) {
+            this.logger.warn('JENNI_STATIC_TOKEN is not set in environment variables');
+        }
     }
 
     private async safeJson(response: Response) {
@@ -29,82 +29,9 @@ export class JenniService {
         }
     }
 
-    private async login(): Promise<string> {
-        try {
-            this.logger.log(`Attempting to login to Jenni API: ${this.apiUrl}/v2/auth/login`);
-            const response = await fetch(`${this.apiUrl}/v2/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    username: this.username,
-                    password: this.password,
-                }),
-            });
-
-            const data = await this.safeJson(response);
-
-            if (!response.ok) {
-                this.logger.error(`Jenni login failed (Status: ${response.status}): ${typeof data === 'string' ? data : JSON.stringify(data)}`);
-                throw new Error('Jenni login failed');
-            }
-
-            this.logger.log(`Jenni login successful. Response contains keys: ${Object.keys(data).join(', ')}`);
-            this.token = data.token || data.accessToken || data.access_token;
-            this.refreshToken = data.refreshToken || data.refresh_token;
-
-            if (!this.token) {
-                this.logger.error('Jenni login succeeded but no token was found in response');
-            } else {
-                this.logger.log(`New token set (length: ${this.token.length})`);
-            }
-
-            return this.token;
-        } catch (error: any) {
-            this.logger.error(`Error during Jenni login: ${error.message}`);
-            throw error;
-        }
-    }
-
-    private async refresh(): Promise<string> {
-        if (!this.refreshToken) {
-            this.logger.warn('No refresh token available, performing full login');
-            return this.login();
-        }
-
-        try {
-            this.logger.log('Attempting to refresh Jenni API token...');
-            const response = await fetch(`${this.apiUrl}/v2/auth/refresh`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    refreshToken: this.refreshToken,
-                }),
-            });
-
-            const data = await this.safeJson(response);
-
-            if (!response.ok) {
-                this.logger.warn(`Jenni token refresh failed (Status: ${response.status}): ${typeof data === 'string' ? data : JSON.stringify(data)}, falling back to login`);
-                return this.login();
-            }
-
-            this.logger.log(`Jenni token refresh successful. Response contains keys: ${Object.keys(data).join(', ')}`);
-            this.token = data.token || data.accessToken || data.access_token;
-            this.refreshToken = data.refreshToken || data.refresh_token;
-
-            return this.token;
-        } catch (error: any) {
-            this.logger.error(`Error during Jenni token refresh: ${error.message}`);
-            return this.login();
-        }
-    }
-
-    private async getHeaders() {
-        if (!this.token) {
-            await this.login();
-        }
+    private getHeaders() {
         return {
-            'Authorization': `${this.token}`,
+            'Authorization': `${this.staticToken}`,
             'Content-Type': 'application/json',
         };
     }
@@ -112,7 +39,7 @@ export class JenniService {
     async createShipment(order: Order) {
         try {
             this.logger.log(`Creating shipment for order #${order.id} on Jenni`);
-            let headers = await this.getHeaders();
+            const headers = this.getHeaders();
 
             const payload = {
                 system_code: this.systemCode,
@@ -139,35 +66,16 @@ export class JenniService {
                 ],
             };
 
-            let response = await fetch(`${this.apiUrl}/v2/shipments/create`, {
+            const response = await fetch(`${this.apiUrl}/v2/shipments/create`, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify(payload),
             });
 
-            // If unauthorized or token invalid, try to refresh/login once
-            if (!response.ok && (response.status === 401 || response.status === 403)) {
-                this.logger.warn(`Jenni API returned ${response.status}. Attempting token refresh...`);
-                await this.refresh();
-                headers = await this.getHeaders();
-                response = await fetch(`${this.apiUrl}/v2/shipments/create`, {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify(payload),
-                });
-            }
-
             if (!response.ok) {
                 const error = await this.safeJson(response);
                 const errorMessage = typeof error === 'string' ? error : JSON.stringify(error);
                 this.logger.error(`Failed to create shipment on Jenni (Status: ${response.status}): ${errorMessage}`);
-
-                // If the error message specifically mentions expired token even after refresh, force a full login next time
-                if (errorMessage.toLowerCase().includes('token') && (errorMessage.toLowerCase().includes('expire') || errorMessage.toLowerCase().includes('invalid'))) {
-                    this.token = null;
-                    this.refreshToken = null;
-                }
-
                 return null;
             }
 
@@ -200,7 +108,6 @@ export class JenniService {
             'صلاح الدين': 'SAH',
             'السليمانية': 'SMH',
             'واسط': 'WST',
-            // English variants
             'anbar': 'ANB',
             'erbil': 'ARB',
             'basra': 'BAS',
@@ -229,23 +136,14 @@ export class JenniService {
         const code = actionCode.toUpperCase();
 
         switch (code) {
-            // Delivered
             case 'DELIVERED':
             case 'FORCE_DELIVERY':
             case 'SUCCESSFUL_DELIVERY':
                 return OrderStatus.DELIVERED;
 
-            // case 'DELIVERED_ARCHIVED':
-            //     return OrderStatus.ARCHIVED_DELIVERED;
-
-            // Returned
             case 'RETURN_TO_STORE':
                 return OrderStatus.RETURNED;
 
-            // case 'RTO_ARCHIVED':
-            //     return OrderStatus.ARCHIVED_RETURNED;
-
-            // Delivering / In Progress
             case 'OFD':
             case 'ASSIGN_TO_AGENT':
             case 'MOVE_TO_AGENT':
@@ -258,8 +156,6 @@ export class JenniService {
             case 'NEW_IN_TRANSIT':
             case 'PICKED_UP':
                 return OrderStatus.DELIVERING;
-
-            // Processing / Treatment required
 
             case 'POSTPONED':
             case 'POSTPONED_CONFIRMED':
@@ -279,7 +175,6 @@ export class JenniService {
             case 'RTO_IN_TRANSIT_WH':
             case 'RTO_READY_FOR_BRANCH':
                 return OrderStatus.PROCESSING;
-
 
             case 'POSTPONEMENT_APPROVED':
             case 'ASSIGN_TO_LIAISON_AGENT':
@@ -311,7 +206,6 @@ export class JenniService {
             case 'MOVE_TO_IN_STORE':
                 return 'SKIPPED';
 
-            // No Status Change
             default:
                 return null;
         }
