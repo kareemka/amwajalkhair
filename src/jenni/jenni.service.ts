@@ -17,7 +17,7 @@ export class JenniService {
             this.configService.get<string>('JENNI_API_URL')?.trim() || '';
 
         this.apiToken =
-            this.configService.get<string>('JENNI_API_TOKEN')?.trim() || '';
+            this.configService.get<string>('JENNI_WEBHOOK_SECRET')?.trim() || '';
 
         this.systemCode =
             this.configService.get<string>('JENNI_SYSTEM_CODE')?.trim() || '';
@@ -27,7 +27,7 @@ export class JenniService {
         }
 
         if (!this.apiToken) {
-            throw new Error('JENNI_API_TOKEN is not configured');
+            throw new Error('JENNI_WEBHOOK_SECRET is not configured');
         }
 
         if (!this.systemCode) {
