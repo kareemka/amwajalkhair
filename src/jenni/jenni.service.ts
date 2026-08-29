@@ -1,3 +1,4 @@
+
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Order } from '../order/entities/order.entity';
@@ -6,22 +7,40 @@ import { OrderStatus } from '../utils/order-status.enum';
 @Injectable()
 export class JenniService {
     private readonly logger = new Logger(JenniService.name);
+
     private readonly apiUrl: string;
-    private readonly username: string;
-    private readonly password: string;
+    private readonly apiToken: string;
     private readonly systemCode: string;
-    private token: string | null = null;
-    private refreshToken: string | null = null;
 
     constructor(private configService: ConfigService) {
-        this.apiUrl = this.configService.get<string>('JENNI_API_URL');
-        this.username = this.configService.get<string>('JENNI_USERNAME');
-        this.password = this.configService.get<string>('JENNI_PASSWORD');
-        this.systemCode = this.configService.get<string>('JENNI_SYSTEM_CODE');
+        this.apiUrl =
+            this.configService.get<string>('JENNI_API_URL')?.trim() || '';
+
+        this.apiToken =
+            this.configService.get<string>('JENNI_API_TOKEN')?.trim() || '';
+
+        this.systemCode =
+            this.configService.get<string>('JENNI_SYSTEM_CODE')?.trim() || '';
+
+        if (!this.apiUrl) {
+            throw new Error('JENNI_API_URL is not configured');
+        }
+
+        if (!this.apiToken) {
+            throw new Error('JENNI_API_TOKEN is not configured');
+        }
+
+        if (!this.systemCode) {
+            throw new Error('JENNI_SYSTEM_CODE is not configured');
+        }
     }
 
-    private async safeJson(response: Response) {
+    /**
+     * Read response safely as JSON or text.
+     */
+    private async safeJson(response: Response): Promise<any> {
         const text = await response.text();
+
         try {
             return JSON.parse(text);
         } catch {
@@ -29,159 +48,110 @@ export class JenniService {
         }
     }
 
-    private async login(): Promise<string> {
-        try {
-            this.logger.log(`Attempting to login to Jenni API: ${this.apiUrl}/v2/auth/login`);
-            const response = await fetch(`${this.apiUrl}/v2/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    username: this.username,
-                    password: this.password,
-                }),
-            });
-
-            const data = await this.safeJson(response);
-
-            if (!response.ok) {
-                this.logger.error(`Jenni login failed (Status: ${response.status}): ${typeof data === 'string' ? data : JSON.stringify(data)}`);
-                throw new Error('Jenni login failed');
-            }
-
-            this.logger.log(`Jenni login successful. Response contains keys: ${Object.keys(data).join(', ')}`);
-            this.token = data.token || data.accessToken || data.access_token;
-            this.refreshToken = data.refreshToken || data.refresh_token;
-
-            if (!this.token) {
-                this.logger.error('Jenni login succeeded but no token was found in response');
-            } else {
-                this.logger.log(`New token set (length: ${this.token.length})`);
-            }
-
-            return this.token;
-        } catch (error: any) {
-            this.logger.error(`Error during Jenni login: ${error.message}`);
-            throw error;
-        }
-    }
-
-    private async refresh(): Promise<string> {
-        if (!this.refreshToken) {
-            this.logger.warn('No refresh token available, performing full login');
-            return this.login();
-        }
-
-        try {
-            this.logger.log('Attempting to refresh Jenni API token...');
-            const response = await fetch(`${this.apiUrl}/v2/auth/refresh`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    refreshToken: this.refreshToken,
-                }),
-            });
-
-            const data = await this.safeJson(response);
-
-            if (!response.ok) {
-                this.logger.warn(`Jenni token refresh failed (Status: ${response.status}): ${typeof data === 'string' ? data : JSON.stringify(data)}, falling back to login`);
-                return this.login();
-            }
-
-            this.logger.log(`Jenni token refresh successful. Response contains keys: ${Object.keys(data).join(', ')}`);
-            this.token = data.token || data.accessToken || data.access_token;
-            this.refreshToken = data.refreshToken || data.refresh_token;
-
-            return this.token;
-        } catch (error: any) {
-            this.logger.error(`Error during Jenni token refresh: ${error.message}`);
-            return this.login();
-        }
-    }
-
-    private async getHeaders() {
-        if (!this.token) {
-            await this.login();
-        }
+    /**
+     * Static Bearer Token authentication.
+     *
+     * Jenni expects:
+     * Authorization: Bearer <token>
+     */
+    private getHeaders(): Record<string, string> {
         return {
-            'Authorization': `${this.token}`,
+            Authorization: `Bearer ${this.apiToken}`,
             'Content-Type': 'application/json',
+            Accept: 'application/json',
         };
     }
 
     async createShipment(order: Order) {
         try {
-            this.logger.log(`Creating shipment for order #${order.id} on Jenni`);
-            let headers = await this.getHeaders();
+            this.logger.log(
+                `Creating shipment for order #${order.id} on Jenni`,
+            );
 
             const payload = {
                 system_code: this.systemCode,
+
                 shipments: [
                     {
                         shipment_number: `${order.orderNumber}`,
                         external_shipment_id: order.id.toString(),
+
                         receiver_name: order.customerName,
                         receiver_phone_1: order.customerPhone,
                         receiver_phone_2: order.customerPhone2 || null,
-                        governorate_code: this.mapGovernorate(order.governorate),
+
+                        governorate_code: this.mapGovernorate(
+                            order.governorate,
+                        ),
+
                         city: order.district,
                         address: order.area,
+
                         amount_iqd: Number(order.totalAmount),
                         amount_usd: 0,
+
                         quantity: 1,
+
                         is_proof_of_delivery: false,
                         is_fragile: false,
                         have_return_item: false,
                         is_special_case: false,
-                        product_info: order.items?.map(item => `${item.productName} (x${item.quantity})`).join(' - ') || "منتجات متنوعة",
+
+                        product_info:
+                            order.items
+                                ?.map(
+                                    item =>
+                                        `${item.productName} (x${item.quantity})`,
+                                )
+                                .join(' - ') || 'منتجات متنوعة',
+
                         note: order.notes || '',
                     },
                 ],
             };
 
-            let response = await fetch(`${this.apiUrl}/v2/shipments/create`, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify(payload),
-            });
-
-            // If unauthorized or token invalid, try to refresh/login once
-            if (!response.ok && (response.status === 401 || response.status === 403)) {
-                this.logger.warn(`Jenni API returned ${response.status}. Attempting token refresh...`);
-                await this.refresh();
-                headers = await this.getHeaders();
-                response = await fetch(`${this.apiUrl}/v2/shipments/create`, {
+            const response = await fetch(
+                `${this.apiUrl}/v2/shipments/create`,
+                {
                     method: 'POST',
-                    headers,
+                    headers: this.getHeaders(),
                     body: JSON.stringify(payload),
-                });
-            }
+                },
+            );
+
+            const data = await this.safeJson(response);
 
             if (!response.ok) {
-                const error = await this.safeJson(response);
-                const errorMessage = typeof error === 'string' ? error : JSON.stringify(error);
-                this.logger.error(`Failed to create shipment on Jenni (Status: ${response.status}): ${errorMessage}`);
+                const errorMessage =
+                    typeof data === 'string'
+                        ? data
+                        : JSON.stringify(data);
 
-                // If the error message specifically mentions expired token even after refresh, force a full login next time
-                if (errorMessage.toLowerCase().includes('token') && (errorMessage.toLowerCase().includes('expire') || errorMessage.toLowerCase().includes('invalid'))) {
-                    this.token = null;
-                    this.refreshToken = null;
-                }
+                this.logger.error(
+                    `Failed to create shipment on Jenni ` +
+                    `(Status: ${response.status}): ${errorMessage}`,
+                );
 
                 return null;
             }
 
-            const result = await response.json();
-            this.logger.log(`Shipment created successfully for order #${order.id}: ${JSON.stringify(result)}`);
-            return result;
+            this.logger.log(
+                `Shipment created successfully for order #${order.id}`,
+            );
+
+            return data;
         } catch (error: any) {
-            this.logger.error(`Error creating shipment on Jenni: ${error.message}`);
+            this.logger.error(
+                `Error creating shipment on Jenni: ${error.message}`,
+            );
+
             return null;
         }
     }
 
     private mapGovernorate(name: string): string {
         const govMap: Record<string, string> = {
+            // Arabic
             'الأنبار': 'ANB',
             'أربيل': 'ARB',
             'البصرة': 'BAS',
@@ -200,7 +170,8 @@ export class JenniService {
             'صلاح الدين': 'SAH',
             'السليمانية': 'SMH',
             'واسط': 'WST',
-            // English variants
+
+            // English
             'anbar': 'ANB',
             'erbil': 'ARB',
             'basra': 'BAS',
@@ -222,10 +193,22 @@ export class JenniService {
             'wasit': 'WST',
         };
 
-        return govMap[name.trim()] || name;
+        if (!name) {
+            return name;
+        }
+
+        const normalizedName = name.trim();
+
+        return govMap[normalizedName] || normalizedName;
     }
 
-    mapJenniStatus(actionCode: string): OrderStatus | 'SKIPPED' | null {
+    mapJenniStatus(
+        actionCode: string,
+    ): OrderStatus | 'SKIPPED' | null {
+        if (!actionCode) {
+            return null;
+        }
+
         const code = actionCode.toUpperCase();
 
         switch (code) {
@@ -235,15 +218,9 @@ export class JenniService {
             case 'SUCCESSFUL_DELIVERY':
                 return OrderStatus.DELIVERED;
 
-            // case 'DELIVERED_ARCHIVED':
-            //     return OrderStatus.ARCHIVED_DELIVERED;
-
             // Returned
             case 'RETURN_TO_STORE':
                 return OrderStatus.RETURNED;
-
-            // case 'RTO_ARCHIVED':
-            //     return OrderStatus.ARCHIVED_RETURNED;
 
             // Delivering / In Progress
             case 'OFD':
@@ -259,8 +236,7 @@ export class JenniService {
             case 'PICKED_UP':
                 return OrderStatus.DELIVERING;
 
-            // Processing / Treatment required
-
+            // Processing
             case 'POSTPONED':
             case 'POSTPONED_CONFIRMED':
             case 'PARTIAL_DELIVERY':
@@ -280,7 +256,7 @@ export class JenniService {
             case 'RTO_READY_FOR_BRANCH':
                 return OrderStatus.PROCESSING;
 
-
+            // No status change
             case 'POSTPONEMENT_APPROVED':
             case 'ASSIGN_TO_LIAISON_AGENT':
             case 'BACK_TO_READY_FOR_PRINT':
@@ -311,9 +287,9 @@ export class JenniService {
             case 'MOVE_TO_IN_STORE':
                 return 'SKIPPED';
 
-            // No Status Change
             default:
                 return null;
         }
     }
 }
+
