@@ -32,14 +32,19 @@ export class JenniService {
     private async login(): Promise<string> {
         try {
             this.logger.log(`Attempting to login to Jenni API: ${this.apiUrl}/v2/auth/login`);
+
+
             const response = await fetch(`${this.apiUrl}/v2/auth/login`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify({
                     username: this.username,
                     password: this.password,
                 }),
             });
+
 
             const data = await this.safeJson(response);
 
@@ -105,7 +110,7 @@ export class JenniService {
         }
 
         return {
-            'Authorization': `Bearer ${this.token}`,
+            'Authorization': this.token,
             'Content-Type': 'application/json',
         };
     }
