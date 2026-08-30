@@ -37,7 +37,9 @@ export class JenniService {
             const response = await fetch(`${this.apiUrl}/v2/auth/login`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'User-Agent': 'curl/8.5.0',
                 },
                 body: JSON.stringify({
                     username: this.username,
