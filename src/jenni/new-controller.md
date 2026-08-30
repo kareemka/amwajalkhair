@@ -3,6 +3,7 @@ import { JenniService } from './jenni.service';
 import { OrderService } from '../order/order.service';
 
 @Controller()
+// @Controller('jenni')
 export class JenniController {
     private readonly logger = new Logger(JenniController.name);
 
@@ -15,6 +16,7 @@ export class JenniController {
         'jenni/webhook/v2/push/update-status',
         'v2/push/update-status',
     ])
+    // @Post('webhook/v2/push/update-status')
     async handleWebhook(@Body() payload: any, @Headers() allHeaders: any) {
         const { token, system_code, updates } = payload;
 
@@ -81,7 +83,7 @@ export class JenniController {
                     if (!isNaN(orderIdentifier)) {
                         await this.orderService.updateOrderStatusByOrderNumber(orderIdentifier, newStatus, `Jenni: ${message}`);
                     }
-                } catch (error:any) {
+                } catch (error: any) {
                     this.logger.error(`Failed to update order status for ${shipment_number}: ${error.message}`);
                 }
             } else {
