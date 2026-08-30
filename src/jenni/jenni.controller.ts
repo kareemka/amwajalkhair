@@ -11,7 +11,7 @@ export class JenniController {
         private readonly orderService: OrderService,
     ) { }
 
-    @Post( 'v2/push/update-status')
+    @Post('v2/push/update-status')
     async handleWebhook(@Body() payload: any, @Headers() allHeaders: any) {
         const { token, system_code, updates } = payload;
 
