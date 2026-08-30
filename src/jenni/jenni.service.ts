@@ -3,6 +3,14 @@ import { ConfigService } from '@nestjs/config';
 import { Order } from '../order/entities/order.entity';
 import { OrderStatus } from '../utils/order-status.enum';
 import axios from 'axios';
+import https from 'https';
+import * as dns from 'dns';
+dns.setDefaultResultOrder('ipv4first');
+
+const jenniHttpsAgent = new https.Agent({
+    family: 4,
+    keepAlive: true,
+});
 
 
 @Injectable()
@@ -32,42 +40,66 @@ export class JenniService {
     }
 
     private async login(): Promise<string> {
-
         try {
             const response = await axios.post(
-                'https://jenni.alzaeemexp.com/api/v2/auth/login',
+                `${this.apiUrl}/v2/auth/login`,
                 {
-                    username: this.configService.get<string>('JENNI_USERNAME'),
-                    password: this.configService.get<string>('JENNI_PASSWORD'),
+                    username: this.username,
+                    password: this.password,
                 },
                 {
+                    httpsAgent: jenniHttpsAgent,
+                    family: 4,
                     headers: {
                         'Content-Type': 'application/json',
                         Accept: 'application/json',
+                        'User-Agent': 'curl/8.5.0',
                     },
-                    validateStatus: () => true, // حتى نتعامل مع 403 بأنفسنا
+                    validateStatus: () => true,
+                    timeout: 30000,
                 },
             );
 
             const data = response.data;
 
             if (response.status < 200 || response.status >= 300) {
+                const errorMessage =
+                    typeof data === 'string'
+                        ? data.substring(0, 1000)
+                        : JSON.stringify(data);
+
                 this.logger.error(
-                    `Jenni login failed (Status: ${response.status}): ${typeof data === 'string' ? data : JSON.stringify(data)
-                    }`,
+                    `Jenni login failed (Status: ${response.status}): ${errorMessage}`,
                 );
 
-                throw new Error('Jenni login failed');
+                throw new Error(`Jenni login failed with status ${response.status}`);
             }
+
+            if (!data?.token) {
+                this.logger.error(
+                    `Jenni login succeeded but no token was returned`,
+                );
+
+                throw new Error('Jenni login response does not contain token');
+            }
+
+            this.token = data.token;
+            this.refreshToken = data.refreshToken || null;
 
             this.logger.log('Jenni login successful');
 
-            return data;
+            return this.token;
         } catch (error) {
             if (axios.isAxiosError(error)) {
                 this.logger.error(
                     `Jenni request error: ${error.message}`,
                 );
+
+                if (error.response) {
+                    this.logger.error(
+                        `Jenni response status: ${error.response.status}`,
+                    );
+                }
             } else {
                 this.logger.error(
                     `Error during Jenni login: ${error instanceof Error ? error.message : String(error)
@@ -77,9 +109,8 @@ export class JenniService {
 
             throw new Error('Jenni login failed');
         }
-
-
     }
+
 
     private async refresh(): Promise<string> {
         if (!this.refreshToken) {
