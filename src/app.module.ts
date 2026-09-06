@@ -39,8 +39,8 @@ import { AiAssistantModule } from './ai-assistant/ai-assistant.module';
     }),
     ConfigModule.forRoot({
       isGlobal: true, // يجعل .env متاح في كل المشروع
-      envFilePath: '.env',
-      // envFilePath: '.env.production',
+      // envFilePath: '.env',
+      envFilePath: '.env.production',
     }),
 
     TypeOrmModule.forRootAsync({
@@ -53,7 +53,7 @@ import { AiAssistantModule } from './ai-assistant/ai-assistant.module';
         username: configService.get<string>('DB_USERNAME'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME'),
-        synchronize: true, // عمل migaration تلقائيا نعطلة في الانتاج
+        synchronize: false, // عمل migaration تلقائيا نعطلة في الانتاج
         // migrationsRun: false, // سنقوم بتشغيلها يدويًا
         autoLoadEntities: true,
         migrations: ['dist/migrations/*.js'],
