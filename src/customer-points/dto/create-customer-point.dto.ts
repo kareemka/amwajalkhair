@@ -3,10 +3,9 @@ import { CustomerPointType } from '../entities/customer-point.entity';
 
 export class CreateCustomerPointDto {
 
-    @IsNumber()
-    @Min(1)
+    @IsNumber({ maxDecimalPlaces: 3 })
+    @Min(0.001)
     points: number;
-
     @IsEnum(CustomerPointType)
     type: CustomerPointType;
 

@@ -18,7 +18,11 @@ export class CustomerPoint {
     id: number;
 
     // نخزن النقاط دائمًا بالموجب
-    @Column({ type: 'int' })
+    @Column({
+        type: 'decimal',
+        precision: 15,
+        scale: 3,
+    })
     points: number;
 
     // يبين نوع العملية (إضافة أو خصم)

@@ -170,7 +170,7 @@ export class StatisticsService {
          * ----------------------------------------------------------- */
 
         const warehousePoints = Number(
-            (-totalProductPoints + totalCustomerPoints).toFixed(2)
+            (-totalProductPoints + totalCustomerPoints).toFixed(3)
         ).toString();
 
 
@@ -251,7 +251,9 @@ export class StatisticsService {
             materials: totalMaterials,
             netAmount,
             expenses: totalExpenses,
-            customerPoints: totalCustomerPoints,
+            // customerPoints: totalCustomerPoints,
+            // ترهيم تقريب نقاط العميل الى عدد صحيح
+            customerPoints: Math.round(totalCustomerPoints),
             warehousePoints,
             orderStatusCount,
             totalUnreadNotifications,

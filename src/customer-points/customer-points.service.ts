@@ -50,6 +50,11 @@ export class CustomerPointsService {
       take: limit,
     });
 
+    const formattedRecords = records.map((record) => ({
+      ...record,
+      points: Number(record.points),
+    }));
+
     // حساب مجموع النقاط لجميع السجلات للموظف باستخدام استعلام SUM
     const totalPointsRow = await this.pointRepo
       .createQueryBuilder('p')
@@ -72,7 +77,7 @@ export class CustomerPointsService {
       totalRecords: count,
       lastPage: Math.ceil(count / limit),
       totalPoints,
-      records,
+      records: formattedRecords,
     };
   }
 
